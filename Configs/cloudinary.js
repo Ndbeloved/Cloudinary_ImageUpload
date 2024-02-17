@@ -1,8 +1,8 @@
 const cloudinary = require('cloudinary').v2
 const multer = require('multer')
-const {Readable} = require('stream')
+const urls = []
 
-module.exports = async function UploadImage(imagePaths){
+module.exports = async function UploadImage(imagePath){
     //configuring with api credentials
     cloudinary.config({
         cloud_name: process.env.CLOUD_NAME,
@@ -10,29 +10,20 @@ module.exports = async function UploadImage(imagePaths){
         api_secret: process.env.CLOUD_API_SECRET
     })
 
-    
-
-    //converting to readable streams
-    const bufferToStream = (buffer)=>{
-        const stream = new Readable()
-        stream.push(buffer)
-        stream.push(null)   //this indicates to the consumer of the stream that theres no more data to read 
-        return stream
-    }
-
-
-    try{
-        const uploadPromise = imagePaths.map(async(image)=>{
-            // const stream = bufferToStream(image.buffer)
-            const stream = image.buffer
-            const result = await cloudinary.uploader.upload(stream, {resource_type: 'auto'})
-            return result.secure_url
-        })
-
-        const urls = await Promise.all(uploadPromise)
-        return urls
-    }
-    catch(err){
-        console.log('Error uploading image: ', err)
+    try {
+        const result = await new Promise((resolve, reject) => {
+            cloudinary.uploader.upload(imagePath, { use_filename: true }, (err, result) => {
+                if (err) {
+                    console.error("Error uploading file:", err);
+                    reject(err);
+                } else {
+                    resolve(result);
+                }
+            });
+        });
+        return result.secure_url;
+    } catch (error) {
+        console.error("Error:", error);
+        throw error;
     }
 }
